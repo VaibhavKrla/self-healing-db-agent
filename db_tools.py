@@ -3,14 +3,13 @@ import psycopg2
 from psycopg2 import Error
 from dotenv import load_dotenv
 
-def execute_sql(sql_query: str) -> str:
+def execute_sql(sql_query: str) -> dict:
     """
     Executes a SQL query against a PostgreSQL database.
-    Returns up to 5 rows as a formatted string on success,
-    or an error message on failure.
+    Returns a dictionary with status, columns, and rows.
     """
-    # Load environment variables from .env file
-    load_dotenv()
+    # Load environment variables from .env file (override existing to ensure fresh creds)
+    load_dotenv(override=True)
     
     # Retrieve database credentials
     db_host = os.getenv("DB_HOST", "localhost")
@@ -39,25 +38,26 @@ def execute_sql(sql_query: str) -> str:
         
         # Fetch results if the query returns data (e.g., SELECT)
         if cursor.description is not None:
-            results = cursor.fetchmany(5)
+            columns = [desc[0] for desc in cursor.description]
+            results = cursor.fetchmany(50) # Return up to 50 rows for the UI
             
             if not results:
-                return "Query executed successfully. No rows returned."
+                return {"status": "success", "columns": [], "rows": [], "message": "Query executed successfully. No rows returned."}
                 
-            # Format the results into a string
-            formatted_results = "\n".join([str(row) for row in results])
-            return formatted_results
+            # Convert row tuples to lists for JSON serialization
+            formatted_results = [list(row) for row in results]
+            return {"status": "success", "columns": columns, "rows": formatted_results}
         else:
             # Commit the transaction for data manipulation queries (INSERT, UPDATE, DELETE)
             connection.commit()
-            return "Query executed successfully. No data to return."
+            return {"status": "success", "columns": [], "rows": [], "message": "Query executed successfully. No data to return."}
             
     except Error as e:
         # Rollback the transaction on error to clear the aborted state
         if connection:
             connection.rollback()
         # Return the exact error string format requested
-        return f"ERROR: {str(e).strip()}"
+        return {"status": "error", "message": f"ERROR: {str(e).strip()}"}
         
     finally:
         # Ensure database resources are cleanly closed

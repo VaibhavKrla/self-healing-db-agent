@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, List, Any, Dict
 from pydantic import BaseModel, Field
 
 class SQLQueryOutput(BaseModel):
@@ -24,3 +24,9 @@ class AgentState(TypedDict):
     
     # A counter to track how many times the agent has tried to fix a failing query (initialized/defaults to 0)
     retry_count: int
+    
+    # New Fields for Advanced UI features
+    results: List[Any]          # Holds the row data
+    columns: List[str]          # Holds the column headers
+    execution_time_ms: float    # Tracks database latency
+    telemetry: List[str]        # Tracks the agent's step-by-step 'thoughts'
